@@ -1,0 +1,6 @@
+-std=c23
+-nostdinc
+-Iinclude
+-Wall
+-Wextra
+-Werror
