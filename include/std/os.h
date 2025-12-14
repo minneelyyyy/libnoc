@@ -13,17 +13,10 @@
 * limitations under the License.
 **/
 
-#include <std/io.h>
+#ifndef _STD_OS_H
+#define _STD_OS_H
 
-int main(int argc, const char *argv[]) {
-    for (int i = 1; i < argc; i++) {
-        std_io_print(argv[i]);
+__attribute__((noreturn))
+void std_exit(int status);
 
-        if (i + 1 < argc)
-            std_io_printc(' ');
-    }
-
-    std_io_printc('\n');
-
-    return 0;
-}
+#endif /* _STD_OS_H */

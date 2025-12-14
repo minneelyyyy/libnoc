@@ -19,37 +19,25 @@
 #include <c/fcntl.h>
 #include <syscalls/syscalls.h>
 
+enum file_perms {
+    FILE_READ = 0x1,
+    FILE_WRITE = 0x2,
+    FILE_READ_WRITE = FILE_READ | FILE_WRITE,
+};
+
 struct std_io_file {
     struct std_allocator *alloc;
     int fd;
-};
-
-struct std_io_writer_impl std_io_file_impl = {
+    enum file_perms perms;
 };
 
 struct std_io_buf_writer {
     struct std_io_writer *internal;
 };
 
-struct std_io_file *std_io_file_open(const char *path, u32 perms, struct std_allocator *alloc) {
-    int p;
-
-    switch (perms) {
-        case STD_IO_FILE_READ:
-            p = O_RDONLY;
-            break;
-        case STD_IO_FILE_WRITE:
-            p = O_WRONLY | O_CREAT;
-            break;
-        case STD_IO_FILE_READ | STD_IO_FILE_WRITE:
-            p = O_RDWR | O_CREAT;
-            break;
-        default:
-            return NULL;
-    }
-
+struct std_io_file *_std_io_file_open(const char *path, int perms, struct std_allocator *alloc) {
     // TODO: error reporting method
-    int fd = sys_open(path, p, 0);
+    int fd = sys_open(path, perms, 0);
     if (fd < 0)
         return NULL;
 
@@ -63,6 +51,55 @@ struct std_io_file *std_io_file_open(const char *path, u32 perms, struct std_all
     return file;
 }
 
+struct std_io_file *std_io_file_open(const char *path, struct std_allocator *alloc) {
+    return std_io_file_open_r(path, alloc);
+}
+
+struct std_io_file *std_io_file_open_r(const char *path, struct std_allocator *alloc) {
+    struct std_io_file *f = _std_io_file_open(path, O_RDONLY, alloc);
+    if (!f)
+        return NULL;
+
+    f->perms = FILE_READ;
+    return f;
+}
+
+struct std_io_file *std_io_file_open_w(const char *path, struct std_allocator *alloc) {
+    struct std_io_file *f = _std_io_file_open(path, O_WRONLY, alloc);
+    if (!f)
+        return NULL;
+
+    f->perms = FILE_WRITE;
+    return f;
+}
+
+struct std_io_file *std_io_file_open_rw(const char *path, struct std_allocator *alloc) {
+    struct std_io_file *f = _std_io_file_open(path, O_RDWR, alloc);
+    if (!f)
+        return NULL;
+
+    f->perms = FILE_READ_WRITE;
+    return f;
+}
+
+struct std_io_file *std_io_file_create(const char *path, struct std_allocator *alloc) {
+    struct std_io_file *f = _std_io_file_open(path, O_WRONLY | O_CREAT | O_EXCL, alloc);
+    if (!f)
+        return NULL;
+
+    f->perms = FILE_WRITE;
+    return f;
+}
+
+struct std_io_file *std_io_file_create_trunc(const char *path, struct std_allocator *alloc) {
+    struct std_io_file *f = _std_io_file_open(path, O_WRONLY | O_CREAT | O_TRUNC, alloc);
+    if (!f)
+        return NULL;
+
+    f->perms = FILE_WRITE;
+    return f;
+}
+
 void std_io_file_close(struct std_io_file *f) {
     sys_close(f->fd);
     f->alloc->free(f->alloc, f);
@@ -73,11 +110,25 @@ usize _std_io_file_read(void *handle, byte* buf, usize nbytes) {
     return sys_read(f->fd, buf, nbytes);
 }
 
+usize _std_io_file_write(void *handle, const byte* buf, usize nbytes) {
+    struct std_io_file *f = handle;
+    return sys_write(f->fd, buf, nbytes);
+}
+
 struct std_io_reader std_io_file_reader(struct std_io_file *f) {
     return (struct std_io_reader) {
         .handle = f,
         .impl = {
             .read = _std_io_file_read,
+        },
+    };
+}
+
+struct std_io_writer std_io_file_writer(struct std_io_file *f) {
+    return (struct std_io_writer) {
+        .handle = f,
+        .impl = {
+            .write = _std_io_file_write,
         },
     };
 }
@@ -125,15 +176,27 @@ struct std_io_writer *std_io_stderr() {
     return &stderr_writer;
 }
 
+void std_io_writer_printc(struct std_io_writer* w, char c) {
+    w->impl.write(w->handle, (const byte*) &c, sizeof c);
+}
+
+void std_io_writer_print(struct std_io_writer* w, const char *s) {
+    w->impl.write(w->handle, (const byte*) s, strlen(s));
+}
+
+void std_io_writer_println(struct std_io_writer* w, const char *s) {
+    std_io_writer_print(w, s);
+    std_io_writer_printc(w, '\n');
+}
+
 void std_io_printc(char c) {
-    std_io_write(&stdout_writer, (const byte*) &c, sizeof(c));
+    std_io_writer_printc(&stdout_writer, c);
 }
 
 void std_io_print(const char *s) {
-    std_io_write(&stdout_writer, (const byte*) s, strlen(s));
+    std_io_writer_print(&stdout_writer, s);
 }
 
 void std_io_println(const char *s) {
-    std_io_print(s);
-    std_io_printc('\n');
+    std_io_writer_println(&stdout_writer, s);
 }

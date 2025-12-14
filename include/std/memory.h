@@ -18,6 +18,6 @@
 
 #include <std/types.h>
 
-void *std_memory_copy(void *dest, void *src, usize nbytes);
+void *std_memory_copy(void *dest, const void *src, usize nbytes);
 
 #endif /* _STD_MEMORY_H */

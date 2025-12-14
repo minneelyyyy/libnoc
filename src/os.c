@@ -13,17 +13,10 @@
 * limitations under the License.
 **/
 
-#include <std/io.h>
+#include <std/os.h>
+#include <syscalls/syscalls.h>
 
-int main(int argc, const char *argv[]) {
-    for (int i = 1; i < argc; i++) {
-        std_io_print(argv[i]);
-
-        if (i + 1 < argc)
-            std_io_printc(' ');
-    }
-
-    std_io_printc('\n');
-
-    return 0;
+__attribute__((noreturn))
+void std_exit(int status) {
+    sys_exit_group(status);
 }

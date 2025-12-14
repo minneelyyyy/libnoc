@@ -6,7 +6,8 @@ OBJS := src/_start.o \
 	src/c/string.o \
 	src/c/syscalls.o \
 	src/io.o \
-	src/memory.o
+	src/memory.o \
+	src/buf.o
 
 .PHONY: all clean
 .SUFFIXES: .c .s .o

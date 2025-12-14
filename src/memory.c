@@ -18,6 +18,6 @@
 
 #include <c/string.h>
 
-void *std_memory_copy(void *restrict dest, void *restrict src, usize nbytes) {
+void *std_memory_copy(void *restrict dest, const void *restrict src, usize nbytes) {
     return memcpy(dest, src, (size_t) nbytes);
 }

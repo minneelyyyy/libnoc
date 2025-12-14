@@ -14,27 +14,25 @@
 **/
 
 #include <std/io.h>
-#include <std/alloc.h>
 #include <std/types.h>
 
-int main(int argc, char *argv[]) {
+int main(int argc, const char *argv[]) {
     if (argc == 1) {
         std_io_println("USAGE: cat <FILES...>");
         return 1;
     }
 
-    struct std_io_writer *stdout = std_io_stdout();
+    byte stack_backed_buffer[4096];
+    struct std_io_buffer buffer = std_io_buffer_create(stack_backed_buffer, sizeof stack_backed_buffer);
+
+    struct std_io_bufwriter stdout = {};
+    std_io_bufwriter_with_buf(&stdout, std_io_stdout(), &buffer);
 
     for (int i = 1; i < argc; i++) {
-        const char *filepath = argv[i];
-        struct std_io_file *file = std_io_file_open(filepath, STD_IO_FILE_READ, &std_heap);
+        struct std_io_file *file = std_io_file_open(argv[i], &std_heap);
         struct std_io_reader reader = std_io_file_reader(file);
 
-        usize n;
-        byte buf[4096];
-        while ((n = std_io_read(&reader, buf, sizeof buf)) > 0) {
-            std_io_write(stdout, buf, n);
-        }
+        std_io_bufwriter_copy_full(&stdout, &reader);
 
         std_io_file_close(file);
     }

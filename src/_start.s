@@ -21,7 +21,7 @@ _start:
     movq (%rsp), %rdi
     leaq 8(%rsp), %rsi
 
-    sub $8, %rsp
+    and $-16, %rsp
 
     call _std_entry_fn
     hlt
